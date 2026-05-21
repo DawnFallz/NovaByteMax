@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NovaByteMax</title>
+    <style>
+        *, *::after, *::before {
+          box-sizing: border-box;
+        }
+
+        body {
+            text-align: center;
+            min-height: 100vh;
+            background: linear-gradient(45deg, #4d0080, #6600cc, #0099ff, #6600cc, #4d0080);
+            background-size: 200% 400%;
+            animation: neon-gradient 2s ease infinite alternate;
+            font-family: 'Arial', sans-serif;
+            color: white;
+            text-shadow: 0 0 10px #fff, 0 0 20px #0ff, 0 0 30px #0ff, 0 0 40px #0ff;
+        }
+
+        @keyframes neon-gradient {
+            0% {
+                background-position: 0% 50%;
+            }
+            100% {
+                background-position: 100% 50%;
+            }
+        }
+
+        h1 {
+            font-size: 3em;
+            text-align: center;
+        }
+
+        .container {
+            width: 99%;
+            background-color: darkblue;
+            position: absolute;
+            left: 2px;
+            height: 60%;
+            border: 2px solid violet;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 20px;
+            max-width: 800px;
+        }
+
+        #repo {
+          margin: 30px 0;
+          border: 3px solid blue;
+          background: mediumblue;
+          width: 90%;
+          color: white;
+          height: 10%;
+          border-radius: 20px;
+          font-weight: bolder;
+        }
+
+        #repo:hover, #repo:focus {
+          text-decoration: underline;
+        }
+
+        footer {
+            background-color: black;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            margin-top: 20px;
+            width: 100%;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            min-height: 15%;
+            border-radius: 15px 15px 0 0;
+        }
+
+        footer a {
+            color: white;
+            text-decoration: none;
+            margin: 0 10px;
+        }
+
+        footer a:hover, footer a:focus {
+            text-decoration: underline;
+        }
+
+        #owner {
+          text-align: right;
+          position: absolute;
+          bottom: 10px;
+          right: 10px;
+        }
+
+        #icon {
+          margin-top: 10px;
+          border-radius: 80px;
+        }
+
+        .github-icon {
+            width: 24px;
+            height: 24px;
+            vertical-align: middle;
+            fill: white;
+            position: absolute;
+            top: 10px;
+            left: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Welcome to NovaByteMax!</h1>
+
+    <div class="container">
+        <p>An AI Discord Assistant built by DawnFallz</p>
+        <img id="icon" src="icon.png" alt="icon" height="300px" width="300px" />
+        <a href="https://github.com/DawnFallz/NovaByteMax"><button id="repo"> Github Repo </button></a>
+    </div>
+
+    <footer>
+        <a href="https://github.com/DawnFallz" target="_blank" aria-label="GitHub" class="github-icon">
+            <svg viewBox="0 0 16 16" version="1.1" width="25" height="25" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2.0-.21.15-.46.55-.38C13.71 14.53 16 11.54 16 8c0-4.42-3.58-8-8-8L8 0z"></path></svg>
+        </a>
+        <p id="owner">&copy; DawnFallz</p>
+    </footer>
+</body>
+</html>

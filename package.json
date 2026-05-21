@@ -1,0 +1,19 @@
+{
+  "name": "novabytemax",
+  "version": "1.0.0",
+  "description": "",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "type": "commonjs",
+  "dependencies": {
+    "discord.js": "14.26.4",
+    "dotenv": "17.4.2",
+    "express": "5.2.1",
+    "openai": "6.38.0"
+  }
+}
