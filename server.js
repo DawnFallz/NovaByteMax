@@ -1,9 +1,23 @@
+require('dotenv').config();
+
 const express = require("express");
 const app = express();
+app.use(express.static('public'));
 
-app.use(express.static(__dirname));
 
-require('dotenv').config();
+if (!process.env.NVIDIA_API_KEY) {
+  console.error("Error: NVIDIA_API_KEY is not set in environment variables.");
+  process.exit(1);
+}
+if (!process.env.MODEL) {
+  console.error("Error: MODEL is not set in environment variables.");
+  process.exit(1);
+}
+if (!process.env.DISCORD_TOKEN) {
+  console.error("Error: DISCORD_TOKEN is not set in environment variables.");
+  process.exit(1);
+}
+
 const { Client, GatewayIntentBits } = require('discord.js');
 const { OpenAI } = require('openai');
 
@@ -16,7 +30,7 @@ const client = new Client({
 });
 
 const nvidia = new OpenAI({
-  apiKey: process.env.NVIDIA_API_KEY,
+  apiKey: process.env.NVIDIA_API_KEY || "",
   baseURL: 'https://integrate.api.nvidia.com/v1'
 });
 
@@ -32,7 +46,7 @@ client.on("messageCreate", async (message) => {
 
   const mentioned = message.mentions.has(client.user);
 
-  const PREFIX = "!nova";
+  const PREFIX = process.env.DISCORD_PREFIX || "!nova";
   const usedPrefix = message.content.startsWith(PREFIX);
 
   if (!mentioned && !usedPrefix) return;
@@ -49,27 +63,25 @@ client.on("messageCreate", async (message) => {
 
   const userId = message.author.id;
 
-  // 🧠 get or create memory
   if (!memory.has(userId)) {
     memory.set(userId, []);
   }
 
   const history = memory.get(userId);
 
-  // add user message
   history.push({
     role: "user",
     content: cleaned
   });
 
-  // limit RAM memory (important for Render)
-  while (history.length > 10) {
+  // limit RAM memory (important for Rende)
+  while (history.length > 20) {
     history.shift();
   }
 
   try {
     const completion = await nvidia.chat.completions.create({
-      model: process.env.MODEL,
+      model: process.env.MODEL || "",
       messages: [
         {
           role: "system",
@@ -87,12 +99,12 @@ Rules:
 - Remember that your memory is only temporary and might forgot things about them
 - Ask them do they want casual Discord-style tone when chatting
 - If asked coding questions, provide practical examples
+- ${process.env.SYSTEM_PROMPT || ""}
 - You must follow these rules at all times
           `
         },
         ...history
       ],
-      max_tokens: 200
     });
 
     const reply = String(
@@ -105,25 +117,33 @@ Rules:
       return await message.reply("Empty AI response.");
     }
 
-    // add assistant response to memory
     history.push({
       role: "assistant",
       content: reply
     });
 
     // keep memory small (again safety)
-    while (history.length > 10) {
+    while (history.length > 20) {
       history.shift();
     }
 
-    await message.reply(reply.slice(0, 2000));
+    let finalReply = reply;
+
+    await message.reply(finalReply);
 
   } catch (error) {
-    console.dir(error, { depth: 5 });
+    console.error("API request failed:", error);
 
-    await message.reply(
-      "Sorry, something failed internally."
-    );
+    let errorMessage = "Sorry, something failed internally.";
+    if (error.response) {
+      errorMessage = `AI API error (${error.response.status}): ${error.message}`;
+    } else if (error.request) {
+      errorMessage = "No response from AI API. Please try again.";
+    } else {
+      errorMessage = `Error setting up AI API request: ${error.message}`;
+    }
+
+    await message.reply(errorMessage);
   }
 });
 
@@ -135,5 +155,5 @@ app.get("/", (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log("Server running on port", PORT);
+  console.log("Server running on port: ", PORT);
 });

@@ -41,7 +41,14 @@ Example:
 DISCORD_TOKEN=xxxxxx
 NVIDIA_API_KEY=xxxxxx
 MODEL=xxxxxx
+DISCORD_PREFIX=xxxxxx
+SYSTEM_PROMPT=xxxxxx
+
 ```
+
+Note: The DISCORD_PREFIX variable is used for when calling the bot (e.g. !nova)
+Note: The SYSTEM_PROMPT variable is for additional system prompts and it isn'r required but the rest are required.
+
 ---
 
 ## Notes
