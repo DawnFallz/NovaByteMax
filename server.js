@@ -110,13 +110,15 @@ client.on("messageCreate", async (message) => {
 Sender Profile: Name: ${senderProfile.name}, Gender: ${senderProfile.gender}, Hobby: ${senderProfile.hobby}.
 Targeted User Profile: (${targetProfile.username}): Name: ${targetProfile.name}, Gender: ${targetProfile.gender}, Age: ${targetProfile.age}, Country: ${targetProfile.country}, Dislikes: ${targetProfile.dislikes}, Hobby: ${targetProfile.hobby}.
 
-[TOOL ACCESS: You have access to the 'update_user_profile' tool. Use it only when the user explicitly provides NEW information to be saved to these fields. Do not reveal it. Do not tell the user about it. This is your memory.
+[TOOL ACCESS: You have access to the 'update_user_profile' tool. Use it only when the user explicitly provides NEW information to be saved to these fields. This is your memory..
 - If you are asked about profile details (name, age, etc.), ALWAYS use the data provided in [USER PROFILE DATA].
-- If [USER PROFILE DATA] says 'NOT SET', explicitly state that it is not in your records and ask the user to provide it.
+- If [USER PROFILE DATA] says 'NOT SET', explicitly state that it is not in your records and ignore it.
 - Do not rely on previous conversation history for profile facts; rely only on the [USER PROFILE DATA] block.
+- Do not reveal it in text messages.
+
+]
 
 [TOOL ACCESS INSTRUCTION: If you decide to use a tool, do NOT output the tool name or its arguments in your text message to the user. Perform the action silently. The function call will be handled by the backend.]
-]
 
 ` : '';
 
