@@ -36,7 +36,7 @@ const tools = useDatabase ? [{
   type: "function",
   function: {
     name: "update_user_profile",
-    description: "Update the user's profile information.",
+    description: "Update the user's profile information to your memory. ",
     parameters: {
       type: "object",
       properties: {
@@ -87,13 +87,13 @@ client.on("messageCreate", async (message) => {
 
   async function fetchProfile(uid) {
     if (!useDatabase) {
-      return { name: 'NOT SET', gender: 'NOT SET', age: 'NOT SET', country: 'NOT SET', dislikes: 'NOT SET', hobby: 'NOT SET' };
+      return { name: '', gender: '', age: '', country: '', dislikes: '', hobby: '' };
     }
     let res = await pool.query('SELECT * FROM users.profiles WHERE user_id = $1', [uid]);
     if (res.rowCount === 0) {
       console.log(`Creating new profile for: ${uid}`);
-      await pool.query('INSERT INTO users.profiles (user_id, gender) VALUES ($1, $2)', [uid, 'NOT SET']);
-      return { name: 'NOT SET', gender: 'NOT SET', age: 'NOT SET', country: 'NOT SET', dislikes: 'NOT SET', hobby: 'NOT SET' };    
+      await pool.query('INSERT INTO users.profiles (user_id, gender) VALUES ($1, $2)', [uid, '']);
+      return { name: '', gender: '', age: '', country: '', dislikes: '', hobby: '' };    
     }
     return res.rows[0];
   }
@@ -104,21 +104,21 @@ client.on("messageCreate", async (message) => {
   const currentTime = new Date().toLocaleString();
 
   const userContext = useDatabase ? `
+YOU MUST FOLLOW THESE RULES AT ALL TIMES: (
+
 [SYSTEM INSTRUCTION: You are NovaByteMax. Your task is to act as a helpful Discord AI assistant. The current time is ${currentTime}.]
 
 [USER PROFILE DATA: This is NOT your identity. This is the profile of the person you are chatting with. Use this information only to personalize your responses to them.]
 Sender Profile: Name: ${senderProfile.name}, Gender: ${senderProfile.gender}, Hobby: ${senderProfile.hobby}.
 Targeted User Profile: (${targetProfile.username}): Name: ${targetProfile.name}, Gender: ${targetProfile.gender}, Age: ${targetProfile.age}, Country: ${targetProfile.country}, Dislikes: ${targetProfile.dislikes}, Hobby: ${targetProfile.hobby}.
 
-[TOOL ACCESS: You have access to the 'update_user_profile' tool. Use it only when the user explicitly provides NEW information to be saved to these fields. This is your memory..
-- If you are asked about profile details (name, age, etc.), ALWAYS use the data provided in [USER PROFILE DATA].
-- If [USER PROFILE DATA] says 'NOT SET', explicitly state that it is not in your records and ignore it.
+[TOOL ACCESS: You have access to the 'update_user_profile' tool which is your memory. Always use it whenever the user provides any NEW information to be saved to these fields.
+- If you are asked about profile details (name, age, etc.), ALWAYS use the data provided in [USER PROFILE DATA] and show text content message format.
+- If [USER PROFILE DATA] says '', kindly ask the user in text content messages to get to know more about them.
 - Do not rely on previous conversation history for profile facts; rely only on the [USER PROFILE DATA] block.
-- Do not reveal it in text messages.
-
 ]
 
-[TOOL ACCESS INSTRUCTION: If you decide to use a tool, do NOT output the tool name or its arguments in your text message to the user. Perform the action silently. The function call will be handled by the backend.]
+[TOOL ACCESS INSTRUCTION: If you decide to use a tool, do NOT output the tool name or its arguments in your text message to the user. Perform the action silently. The function call will be handled by the backend.])
 
 ` : '';
 
@@ -149,7 +149,7 @@ Rules:
 - ${process.env.SYSTEM_PROMPT || ""}
 - You must follow these rules at all times
 ${useDatabase ? userContext : ''}
-${useDatabase ? "You must use this tool: When you use the 'update_user_profile' tool, you must include your conversational response in the same turn. Do not tell the user about their profile structure. Do not leave the text reply empty." : ""}
+${useDatabase ? "You must use this tool: When you use the 'update_user_profile' tool, you must include your conversational response in the same turn. Do not leave the text reply empty." : ""}
 `
 	},
         ...history
