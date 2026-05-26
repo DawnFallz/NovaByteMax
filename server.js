@@ -62,8 +62,32 @@ client.on("messageCreate", async (message) => {
   let cleaned = message.content.replace(`<@${client.user.id}>`, "").replace(PREFIX, "").trim();
   const senderId = message.author.id;
 
-  const mentionedUser = message.mentions.users.first();
-  const targetId = mentionedUser ? mentionedUser.id : senderId;
+  let mentionedUser = message.mentions.users.first();
+
+  if (message.reference && !mentionedUser) {
+    try {
+      const referencedMessage = await message.channel.messages.fetch(message.reference.messageId);
+      mentionedUser = referencedMessage.author;
+    } catch (err) {
+      console.error("Could not fetch referenced message:", err);
+    }
+  }
+
+  let targetId = senderId;
+
+  if (message.reference && message.reference.messageId) {
+    try {
+      const referencedMessage = await message.channel.messages.fetch(message.reference.messageId);
+      targetId = referencedMessage.author.id;
+    } catch (err) {
+      console.error("Could not fetch referenced message:", err);
+    }
+  }
+
+  else if (message.mentions.users.size > 0) {
+    const mentionedUser = message.mentions.users.first();
+    targetId = mentionedUser.id !== client.user.id ? mentionedUser.id : senderId;
+  }
 
   console.log(`Processing message from ${senderId}, targeting: ${targetId}`);
 
@@ -75,7 +99,8 @@ client.on("messageCreate", async (message) => {
     if (res.rowCount === 0) {
       console.log(`Creating new profile for: ${uid}`);
       await pool.query('INSERT INTO users.profiles (user_id, gender) VALUES ($1, $2)', [uid, 'NOT SET']);
-      return { name: 'NOT SET', gender: 'NOT SET', age: 'NOT SET', country: 'NOT SET', dislikes: 'NOT SET', hobby: 'NOT SET' };    }
+      return { name: 'NOT SET', gender: 'NOT SET', age: 'NOT SET', country: 'NOT SET', dislikes: 'NOT SET', hobby: 'NOT SET' };    
+    }
     return res.rows[0];
   }
 
