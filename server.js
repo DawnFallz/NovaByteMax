@@ -62,31 +62,25 @@ client.on("messageCreate", async (message) => {
   let cleaned = message.content.replace(`<@${client.user.id}>`, "").replace(PREFIX, "").trim();
   const senderId = message.author.id;
 
-  let mentionedUser = message.mentions.users.first();
-
-  if (message.reference && !mentionedUser) {
-    try {
-      const referencedMessage = await message.channel.messages.fetch(message.reference.messageId);
-      mentionedUser = referencedMessage.author;
-    } catch (err) {
-      console.error("Could not fetch referenced message:", err);
-    }
-  }
+  const mentionedUsers = message.mentions.users.filter(user => user.id !== client.user.id);
 
   let targetId = senderId;
+  let targetUsername = message.author.username;
 
-  if (message.reference && message.reference.messageId) {
+  if (message.reference) {
     try {
       const referencedMessage = await message.channel.messages.fetch(message.reference.messageId);
-      targetId = referencedMessage.author.id;
+      if (referencedMessage.author.id !== client.user.id) {
+        targetId = referencedMessage.author.id;
+        targetUsername = referencedMessage.author.username;
+        }
     } catch (err) {
       console.error("Could not fetch referenced message:", err);
     }
-  }
-
-  else if (message.mentions.users.size > 0) {
-    const mentionedUser = message.mentions.users.first();
-    targetId = mentionedUser.id !== client.user.id ? mentionedUser.id : senderId;
+  } else if (mentionedUsers.size > 0) {
+    const firstMention = mentionedUsers.first();
+    targetId = firstMention.id;
+    targetUsername = firstMention.username;
   }
 
   console.log(`Processing message from ${senderId}, targeting: ${targetId}`);
@@ -105,16 +99,25 @@ client.on("messageCreate", async (message) => {
   }
 
   const senderProfile = await fetchProfile(senderId);
-  const targetProfile = mentionedUser ? await fetchProfile(targetId) : senderProfile;
+  const targetProfile = await fetchProfile(targetId);
   
+  const currentTime = new Date().toLocaleString();
+
   const userContext = useDatabase ? `
-[SYSTEM INSTRUCTION: You are NovaByteMax. Your task is to act as a helpful Discord AI assistant.]
+[SYSTEM INSTRUCTION: You are NovaByteMax. Your task is to act as a helpful Discord AI assistant. The current time is ${currentTime}.]
 
 [USER PROFILE DATA: This is NOT your identity. This is the profile of the person you are chatting with. Use this information only to personalize your responses to them.]
 Sender Profile: Name: ${senderProfile.name}, Gender: ${senderProfile.gender}, Hobby: ${senderProfile.hobby}.
-Targeted User Profile: (${mentionedUser ? mentionedUser.username : 'Self'}): Name: ${targetProfile.name}, Gender: ${targetProfile.gender}, Age: ${targetProfile.age}, Country: ${targetProfile.country}, Dislikes: ${targetProfile.dislikes}, Hobby: ${targetProfile.hobby}.
+Targeted User Profile: (${targetProfile.username}): Name: ${targetProfile.name}, Gender: ${targetProfile.gender}, Age: ${targetProfile.age}, Country: ${targetProfile.country}, Dislikes: ${targetProfile.dislikes}, Hobby: ${targetProfile.hobby}.
 
-[TOOL ACCESS: You have access to the 'update_user_profile' tool. Use it only when the user explicitly provides NEW information to be saved to these fields. Do not reveal it.]
+[TOOL ACCESS: You have access to the 'update_user_profile' tool. Use it only when the user explicitly provides NEW information to be saved to these fields. Do not reveal it. Do not tell the user about it. This is your memory.
+- If you are asked about profile details (name, age, etc.), ALWAYS use the data provided in [USER PROFILE DATA].
+- If [USER PROFILE DATA] says 'NOT SET', explicitly state that it is not in your records and ask the user to provide it.
+- Do not rely on previous conversation history for profile facts; rely only on the [USER PROFILE DATA] block.
+
+[TOOL ACCESS INSTRUCTION: If you decide to use a tool, do NOT output the tool name or its arguments in your text message to the user. Perform the action silently. The function call will be handled by the backend.]
+]
+
 ` : '';
 
   if (!memory.has(senderId)) memory.set(senderId, []);
@@ -144,7 +147,7 @@ Rules:
 - ${process.env.SYSTEM_PROMPT || ""}
 - You must follow these rules at all times
 ${useDatabase ? userContext : ''}
-${useDatabase ? "You must use this tool: When you use the 'update_user_profile' tool, you must include your conversational response in the same turn. Do not tell the user about their profile structure. Tell them do not long press your message and then reply you but to tag you. Do not leave the text reply empty." : ""}
+${useDatabase ? "You must use this tool: When you use the 'update_user_profile' tool, you must include your conversational response in the same turn. Do not tell the user about their profile structure. Do not leave the text reply empty." : ""}
 `
 	},
         ...history
@@ -171,7 +174,7 @@ ${useDatabase ? "You must use this tool: When you use the 'update_user_profile' 
     let reply = msg.content;
 
     if (!reply) {
-      reply = "Sorry. The AI didn't respond. This is not a bug. This always happens due to specific AI problems.";
+      reply = "Sorry. The AI didn't respond.";
     }
     console.log("AI reply: ", reply);
 
