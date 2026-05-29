@@ -35,7 +35,7 @@ const nvidia = new OpenAI({
 const tools = useDatabase ? [{
   type: "function",
   function: {
-    name: "update_user_profile",
+    name: "update_memory",
     description: "Update the user's profile information to your memory. ",
     parameters: {
       type: "object",
@@ -46,7 +46,6 @@ const tools = useDatabase ? [{
   }
 }] : [];
 
-// 🧠 RAM MEMORY STORE (userId -> messages[])
 const memory = new Map();
 
 client.on('clientReady', () => console.log(`Logged in as ${client.user.tag}`));
@@ -65,22 +64,22 @@ client.on("messageCreate", async (message) => {
   const mentionedUsers = message.mentions.users.filter(user => user.id !== client.user.id);
 
   let targetId = senderId;
-  let targetUsername = message.author.username;
+  const rawIdMatch = message.content.match(/@(\d{17,19})/);
 
   if (message.reference) {
     try {
       const referencedMessage = await message.channel.messages.fetch(message.reference.messageId);
       if (referencedMessage.author.id !== client.user.id) {
         targetId = referencedMessage.author.id;
-        targetUsername = referencedMessage.author.username;
         }
     } catch (err) {
       console.error("Could not fetch referenced message:", err);
     }
   } else if (mentionedUsers.size > 0) {
     const firstMention = mentionedUsers.first();
-    targetId = firstMention.id;
-    targetUsername = firstMention.username;
+    targetId = mentionedUsers.first().id;
+  } else if (rawIdMatch) {
+    targetId = rawIdMatch[1];
   }
 
   console.log(`Processing message from ${senderId}, targeting: ${targetId}`);
@@ -93,50 +92,69 @@ client.on("messageCreate", async (message) => {
     if (res.rowCount === 0) {
       console.log(`Creating new profile for: ${uid}`);
       await pool.query('INSERT INTO users.profiles (user_id, gender) VALUES ($1, $2)', [uid, '']);
-      return { name: '', gender: '', age: '', country: '', dislikes: '', hobby: '' };    
+      return { name: '', gender: '', age: '', country: '', dislikes: '', hobby: '' };
     }
     return res.rows[0];
   }
 
   const senderProfile = await fetchProfile(senderId);
   const targetProfile = await fetchProfile(targetId);
-  
-  const currentTime = new Date().toLocaleString();
+
+  console.log(`DEBUG: Fetching profile for ID: ${targetId}`);
+  console.log(`DEBUG: Data found:`, targetProfile);
 
   const userContext = useDatabase ? `
-YOU MUST FOLLOW THESE RULES AT ALL TIMES: (
+[USER PROFILE DATA]: This is NOT your identity. You have access to the profiles of two distinct users currently involved in this interaction:
 
-[SYSTEM INSTRUCTION: You are NovaByteMax. Your task is to act as a helpful Discord AI assistant. The current time is ${currentTime}.]
+1. THE SENDER (The person talking to me):
+- Name: ${senderProfile.name}
+- Gender: ${senderProfile.gender}
+- Age: ${senderProfile.age}
+- Hobby: ${senderProfile.hobby}
+- Country: ${senderProfile.country}
 
-[USER PROFILE DATA: This is NOT your identity. This is the profile of the person you are chatting with. Use this information only to personalize your responses to them.]
-Sender Profile: Name: ${senderProfile.name}, Gender: ${senderProfile.gender}, Hobby: ${senderProfile.hobby}.
-Targeted User Profile: (${targetProfile.username}): Name: ${targetProfile.name}, Gender: ${targetProfile.gender}, Age: ${targetProfile.age}, Country: ${targetProfile.country}, Dislikes: ${targetProfile.dislikes}, Hobby: ${targetProfile.hobby}.
+2. THE MENTIONED USER (The person being asked about):
+- Name: ${targetProfile.name || "Unknown"}
+- Gender: ${targetProfile.gender}
+- Age: ${targetProfile.age}
+- Country: ${targetProfile.country}
+- Dislikes: ${targetProfile.dislikes}
+- Hobby: ${targetProfile.hobby}
 
-[TOOL ACCESS: You have access to the 'update_user_profile' tool which is your memory. Always use it whenever the user provides any NEW information to be saved to these fields.
+[RULES FOR PROFILE USAGE]:
+- Use this information only to personalize your responses to them.
+- When the user asks "Do you know [User]?" or mentions someone else, you MUST pull information ONLY from "THE MENTIONED USER" profile.
+- Do NOT confuse "THE SENDER" with "THE MENTIONED USER".
+- If the user asks about themselves, use "THE SENDER" profile.
+
+---
+
+[TOOL ACCESS INSTRUCTION]:
+You have access to the 'update_memory' tool which is your memory. Always use it whenever the user provides any NEW information.
 - If you are asked about profile details (name, age, etc.), ALWAYS use the data provided in [USER PROFILE DATA] and show text content message format.
-- If [USER PROFILE DATA] says '', kindly ask the user in text content messages to get to know more about them.
-- Do not rely on previous conversation history for profile facts; rely only on the [USER PROFILE DATA] block.
-]
-
-[TOOL ACCESS INSTRUCTION: If you decide to use a tool, do NOT output the tool name or its arguments in your text message to the user. Perform the action silently. The function call will be handled by the backend.])
-
-` : '';
+- Do not rely on previous conversation history for user facts; rely only on the [USER PROFILE DATA] block. You only refer to previous conversation history when you can't find the usee facts.
+- Do not output the tool name or its arguments in your text message to the user. Perform the action silently. 
+- If a mention or user ID is present in the conversation, the *Target User Profile* is the primary subject. 
+- You MUST prioritize the *Target User Profile* when describing a mentioned user.
+- If the user asks about themselves, use the *Sender Profile*.` : '';
 
   if (!memory.has(senderId)) memory.set(senderId, []);
   const history = memory.get(senderId);
   history.push({ role: "user", content: cleaned });
-  while (history.length > 20) history.shift();
+  while (history.length > 30) history.shift();
 
   try {
-    const completion = await nvidia.chat.completions.create({
-      model: process.env.MODEL || "",
-      messages: [
-        { role: "system", content: `
-Your name is NovaByteMax, and your nickname is Nova, a Discord AI assistant.
+    const messages = [
+      { role: "system", content: `
+[IDENTITY]:
+- You are NovaByteMax (nickname: Nova), a Discord AI assistant. 
+- You are NOT the user you are talking to.
+- NEVER refer to the user as Nova. You are Nova. They are the user.
+${useDatabase ? '- If the user asks "Do you know me?", always identify the user by their name from [SENDER PROFILE] and describe them using that data.' : ''}
 
-Rules:
-- Be concise
-- Be helpful
+---
+
+[RULES]:
 - Avoid long essays
 - Mention your nickname is Nova at the start only
 - When they say Nova or NovaByteMax, it is you
@@ -145,15 +163,28 @@ Rules:
 - ${useDatabase ? "Your memory is persistent." : "Remember that your memory is only temporary and might forgot things about them"}
 - Ask them do they want casual Discord-style tone when chatting
 - Always reply the user with a response
+- Do not guess what the user says 
 - If asked coding questions, provide practical examples
+- The current time: ${new Date().toLocaleString()}, say it only when the user wants it.
+- Private things stay private. Period.
+- When in doubt, ask before acting externally.
+- Never send half-baked replies to messaging surfaces.
+- You're not the user's voice — be careful in group chats.
 - ${process.env.SYSTEM_PROMPT || ""}
-- You must follow these rules at all times
+- Be the assistant you'd actually want to talk to. Concise when needed, thorough when it matters. Not a corporate drone. Not a sycophant. Just... good.
+- Be resourceful before asking. Try to figure it out. Then ask if you're stuck. The goal is to come back with answers, not questions.
+
+---
+
 ${useDatabase ? userContext : ''}
-${useDatabase ? "You must use this tool: When you use the 'update_user_profile' tool, you must include your conversational response in the same turn. Do not leave the text reply empty." : ""}
 `
-	},
-        ...history
-      ],
+      },
+      ...history
+    ];
+
+    const completion = await nvidia.chat.completions.create({
+      model: process.env.MODEL || "",
+      messages: messages,
       ...(useDatabase && { tools: tools, tool_choice: "auto" })
     });
 
@@ -169,8 +200,13 @@ ${useDatabase ? "You must use this tool: When you use the 'update_user_profile' 
       );
       const keys = Object.keys(filteredArgs);
       const values = Object.values(filteredArgs);
-      const setClause = keys.map((key, i) => `${key} = $${i + 2}`).join(", ");
-      await pool.query(`UPDATE users.profiles SET ${setClause} WHERE user_id = $1`, [senderId, ...values]);
+      if (keys.length > 0) {
+        const setClause = keys.map((key, i) => `${key} = $${i + 2}`).join(", ");
+        await pool.query(`UPDATE users.profiles SET ${setClause} WHERE user_id = $1`, [targetId, ...values]);
+        console.log("Database updated successfully for user: ${targetId}");
+      } else {
+        console.log("No valid profile fields to update; skipping SQL execution.");
+      }
     }
 
     let reply = msg.content;
@@ -183,10 +219,18 @@ ${useDatabase ? "You must use this tool: When you use the 'update_user_profile' 
     history.push({ role: "assistant", content: reply });
     while (history.length > 20) history.shift();
 
-    await message.reply(reply);
+    try {
+      await message.reply(reply);
+    } catch (err) {
+      await message.channel.send(reply);
+    }
   } catch (error) {
     console.error("API failed:", error);
-    await message.reply("Sorry, something failed internally.");
+    try {
+      await message.reply("Sorry, something failed internally.");
+    } catch (err) {
+      await message.channel.send("Sorry, something failed internally.");
+    }
   }
 });
 
@@ -196,3 +240,4 @@ app.get("/", (req, res) => res.sendFile("index.html"));
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log("Server running on port: ", PORT));
+
