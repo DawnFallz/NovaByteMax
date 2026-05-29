@@ -126,17 +126,14 @@ client.on("messageCreate", async (message) => {
 - When the user asks "Do you know [User]?" or mentions someone else, you MUST pull information ONLY from "THE MENTIONED USER" profile.
 - Do NOT confuse "THE SENDER" with "THE MENTIONED USER".
 - If the user asks about themselves, use "THE SENDER" profile.
+- If you are asked about profile details (name, age, etc.), ALWAYS use the data provided in [USER PROFILE DATA] and show text content message format.
+- Do not rely on previous conversation history for user facts; rely only on the [USER PROFILE DATA] block. You only refer to previous conversation history when you can't find the user facts.
 
 ---
 
 [TOOL ACCESS INSTRUCTION]:
-You have access to the 'update_memory' tool which is your memory. Always use it whenever the user provides any NEW information.
-- If you are asked about profile details (name, age, etc.), ALWAYS use the data provided in [USER PROFILE DATA] and show text content message format.
-- Do not rely on previous conversation history for user facts; rely only on the [USER PROFILE DATA] block. You only refer to previous conversation history when you can't find the usee facts.
-- Do not output the tool name or its arguments in your text message to the user. Perform the action silently. 
-- If a mention or user ID is present in the conversation, the *Target User Profile* is the primary subject. 
-- You MUST prioritize the *Target User Profile* when describing a mentioned user.
-- If the user asks about themselves, use the *Sender Profile*.` : '';
+You have access to the 'update_memory' tool which is your memory. Always use it whenever the user provides any NEW information. Do not output the tool name or its arguments in your text message to the user. Perform the action silently. 
+` : '';
 
   if (!memory.has(senderId)) memory.set(senderId, []);
   const history = memory.get(senderId);
